@@ -1,0 +1,52 @@
+{
+  "VOLTAGE_TEST": {
+    "cost": 2,
+    "time": 5,
+    "defect_coverage": 0.15
+  },
+  "CURRENT_TEST": {
+    "cost": 3,
+    "time": 7,
+    "defect_coverage": 0.12
+  },
+  "FREQUENCY_TEST": {
+    "cost": 4,
+    "time": 10,
+    "defect_coverage": 0.18
+  },
+  "TEMPERATURE_TEST": {
+    "cost": 5,
+    "time": 12,
+    "defect_coverage": 0.1
+  },
+  "POWER_TEST": {
+    "cost": 3,
+    "time": 8,
+    "defect_coverage": 0.14
+  },
+  "TIMING_TEST": {
+    "cost": 6,
+    "time": 15,
+    "defect_coverage": 0.2
+  },
+  "LEAKAGE_TEST": {
+    "cost": 4,
+    "time": 9,
+    "defect_coverage": 0.11
+  },
+  "NOISE_TEST": {
+    "cost": 2,
+    "time": 6,
+    "defect_coverage": 0.08
+  },
+  "STRESS_TEST": {
+    "cost": 8,
+    "time": 20,
+    "defect_coverage": 0.25
+  },
+  "FUNCTIONAL_TEST": {
+    "cost": 10,
+    "time": 30,
+    "defect_coverage": 0.35
+  }
+}

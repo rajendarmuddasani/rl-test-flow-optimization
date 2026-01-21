@@ -1,0 +1,8 @@
+{
+  "total_chips": 1000,
+  "total_test_types": 10,
+  "defect_rate": 0.714,
+  "avg_test_cost": 4.7,
+  "avg_test_time": 12.2,
+  "total_sequences": 500
+}
