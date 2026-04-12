@@ -40,3 +40,13 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Model weights and training outputs
+*.pt
+*.zip
+outputs/
+mlruns/
+
+# Internal planning files
+ENHANCEMENT_PLAN.md
+copilot-instructions.md
