@@ -9,7 +9,8 @@ cells = []
 
 cells.append(mc(
     "# RL Test Flow Optimization — Notebook 3 of 3: Final + Plots + Export\n\n"
-    "**Prerequisites**: `rl-stage1-results` AND `rl-stage2-results` datasets added as inputs.\n\n"
+    "**Prerequisites**: `rl-stage1-results` AND `rl-stage2-results` datasets added as inputs.\n"
+    "**RL training device**: CPU (intentional for SB3 MLP workloads).\n\n"
     "| Step | Description | Est. Time |\n"
     "|------|-------------|----------|\n"
     "| 8 | Final training: best algo + HPO params × 1M steps | ~3-4 h |\n"
@@ -32,7 +33,8 @@ cells.append(cc(
     "os.chdir('rl-test-flow-optimization')\n"
     "sys.path.insert(0, '.')\n\n"
     "import torch, numpy as np, pandas as pd, matplotlib.pyplot as plt, seaborn as sns\n"
-    "print(f'GPU: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else \"NONE — enable GPU!\"}')\n\n"
+    "print(f'GPU: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else \"NONE — not required for this run\"}')\n"
+    "print('RL train device: cpu (forced intentionally for SB3 MlpPolicy)')\n\n"
     "NB2_PATH = '/kaggle/input/rl-stage2-results/stage2_results.json'\n"
     "with open(NB2_PATH) as f:\n"
     "    nb2 = json.load(f)\n\n"

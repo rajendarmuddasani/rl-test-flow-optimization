@@ -8,6 +8,7 @@ and Optuna hyperparameter optimization with MLflow tracking.
 from __future__ import annotations
 
 import logging
+import os
 import time
 from pathlib import Path
 
@@ -48,6 +49,8 @@ class ProgressCallback:
         print(f"  [{self.algo}] Training started — {self.total:,} steps")
 
     def on_step(self) -> bool:
+        if self.model is None or self._t0 is None:
+            return True
         self.num_timesteps = self.model.num_timesteps
         if self.num_timesteps - self._last_print >= self.freq:
             elapsed = time.time() - self._t0
@@ -63,6 +66,8 @@ class ProgressCallback:
     def on_rollout_start(self) -> None: pass
     def on_rollout_end(self) -> None: pass
     def on_training_end(self) -> None:
+        if self._t0 is None:
+            return
         elapsed = time.time() - self._t0
         print(f"  [{self.algo}] DONE — {self.total:,} steps in {elapsed/60:.1f}m")
     def _on_step(self) -> bool: return self.on_step()
@@ -121,6 +126,18 @@ def _ensure_monitor(env):
     return env
 
 
+def _select_training_device(kwargs: dict, algo_name: str) -> str:
+    """Force CPU for SB3 MLP policies unless the caller explicitly overrides it."""
+    device = kwargs.get("device")
+    if device is None:
+        device = os.environ.get("RL_TRAIN_DEVICE", "cpu")
+    print(
+        f"  [{algo_name}] Using device={device} "
+        "(intentional: SB3 MLP policies on this environment are CPU-bound and slower on CUDA)"
+    )
+    return device
+
+
 BASELINES = {
     "random": random_policy,
     "greedy_coverage": greedy_coverage_policy,
@@ -133,6 +150,7 @@ def evaluate_policy(env, policy_fn, n_episodes: int = 200) -> dict:
     rewards, costs, accuracies, tests_counts = [], [], [], []
     for _ in range(n_episodes):
         obs, _ = env.reset()
+        info = {}
         done, ep_reward = False, 0.0
         while not done:
             action = policy_fn(env)
@@ -168,6 +186,7 @@ def train_maskable_ppo(
     from stable_baselines3.common.callbacks import EvalCallback
 
     env = _ensure_monitor(env)
+    device = _select_training_device(kwargs, "MASKABLE_PPO")
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -184,6 +203,7 @@ def train_maskable_ppo(
         clip_range=0.2,
         verbose=1,
         seed=seed,
+        device=device,
     )
 
     progress_cb = ProgressCallback(total_timesteps, print_freq=10_000, algo_name="MASKABLE_PPO")
@@ -215,6 +235,7 @@ def train_ppo(
     from stable_baselines3.common.callbacks import EvalCallback
 
     env = _ensure_monitor(env)
+    device = _select_training_device(kwargs, "PPO")
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -231,6 +252,7 @@ def train_ppo(
         clip_range=0.2,
         verbose=1,
         seed=seed,
+        device=device,
     )
 
     progress_cb = ProgressCallback(total_timesteps, print_freq=10_000, algo_name="PPO")
@@ -262,6 +284,7 @@ def train_dqn(
     from stable_baselines3.common.callbacks import EvalCallback
 
     env = _ensure_monitor(env)
+    device = _select_training_device(kwargs, "DQN")
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -277,6 +300,7 @@ def train_dqn(
         exploration_final_eps=0.05,
         verbose=1,
         seed=seed,
+        device=device,
     )
 
     progress_cb = ProgressCallback(total_timesteps, print_freq=10_000, algo_name="DQN")
@@ -308,6 +332,7 @@ def train_a2c(
     from stable_baselines3.common.callbacks import EvalCallback
 
     env = _ensure_monitor(env)
+    device = _select_training_device(kwargs, "A2C")
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -321,6 +346,7 @@ def train_a2c(
         gae_lambda=0.95,
         verbose=1,
         seed=seed,
+        device=device,
     )
 
     progress_cb = ProgressCallback(total_timesteps, print_freq=10_000, algo_name="A2C")
@@ -356,6 +382,7 @@ def evaluate_trained_model(env, model, n_episodes: int = 200) -> dict:
     rewards, costs, accuracies, tests_counts = [], [], [], []
     for _ in range(n_episodes):
         obs, _ = env.reset()
+        info = {}
         done, ep_reward = False, 0.0
         while not done:
             action, _ = model.predict(obs, deterministic=True)
@@ -431,6 +458,7 @@ def evaluate_trained_model_detailed(env, model, n_episodes: int = 1000) -> dict:
     episode_rewards, episode_costs, episode_tests, defect_escapes = [], [], [], []
     for _ in range(n_episodes):
         obs, _ = env.reset()
+        info = {}
         done, ep_reward = False, 0.0
         while not done:
             action, _ = model.predict(obs, deterministic=True)

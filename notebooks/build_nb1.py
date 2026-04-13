@@ -10,7 +10,7 @@ cells = []
 # ── Title ─────────────────────────────────────────────────────────────────
 cells.append(mc(
     "# RL Test Flow Optimization — Notebook 1 of 3: Setup + Stage-1\n\n"
-    "**GPU**: Kaggle T4 x2  |  **Runtime target**: <10 hours  |  **Steps**: 1–5\n\n"
+    "**Runtime**: Kaggle notebook  |  **RL training device**: CPU (intentional)  |  **Steps**: 1–5\n\n"
     "| Notebook | Contents | Est. Time |\n"
     "|----------|----------|----------|\n"
     "| **NB1 (this)** | Install, Data, Env, Baselines, Stage-1 (4 algos × 200K) | ~6-8 h |\n"
@@ -33,6 +33,10 @@ cells.append(mc(
     "| DQN | Off-policy | Experience replay, stable |\n"
     "| PPO | On-policy | Clipped surrogate objective |\n"
     "| MaskablePPO | On-policy | Action masking for invalid tests |\n\n"
+    "## Device Note\n"
+    "- Kaggle may show a T4 GPU attached, but SB3 with `MlpPolicy` on this tabular environment is CPU-bound\n"
+    "- Forcing CUDA here causes the exact SB3 warning about poor GPU usage and usually makes training slower\n"
+    "- The repo now forces all RL training to `device='cpu'` unless you explicitly override it\n\n"
     "> **Production scale note**: This runs 100K chips × 200 tests (Kaggle T4).\n"
     "> Production: 1M chips × 1000 tests on AMD MI300X / NVIDIA A100."
 ))
@@ -57,11 +61,12 @@ cells.append(cc(
     "    print(f'GPU:            {torch.cuda.get_device_name(0)}')\n"
     "    print(f'VRAM:           {torch.cuda.get_device_properties(0).total_memory/1e9:.1f} GB')\n"
     "else:\n"
-    "    raise RuntimeError('No GPU! Go to Settings > Accelerator > GPU T4 x2')\n\n"
+    "    print('No Kaggle GPU attached. That is acceptable for this SB3 MLP workload.')\n\n"
     "import stable_baselines3 as sb3, sb3_contrib, optuna\n"
     "print(f'SB3:            {sb3.__version__}')\n"
     "print(f'sb3-contrib:    {sb3_contrib.__version__}')\n"
     "print(f'Optuna:         {optuna.__version__}')\n"
+    "print('RL train device: cpu (forced intentionally for SB3 MlpPolicy)')\n"
     "print('\\nAll dependencies installed ✓')\n"
 ))
 
@@ -159,7 +164,8 @@ cells.append(cc(
 cells.append(mc(
     "## Step 5: Stage-1 — Train All 4 Algorithms (200K steps each)\n\n"
     "**Execution order**: A2C → DQN → PPO → MaskablePPO (fastest to slowest).\n"
-    "Progress prints every 10K steps with elapsed time and ETA.\n\n"
+    "Progress prints every 10K steps with elapsed time and ETA.\n"
+    "Training is forced to CPU on purpose to avoid SB3's slow-CUDA warning for MLP policies.\n\n"
     "| Algorithm | Key Setting | Expected Time |\n"
     "|-----------|------------|---------------|\n"
     "| A2C | n_steps=5, fast updates | ~1-2h |\n"
