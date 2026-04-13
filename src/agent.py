@@ -8,11 +8,70 @@ and Optuna hyperparameter optimization with MLflow tracking.
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+
+# ── Progress callback (prints every N steps) ──────────────────────────────
+
+class ProgressCallback:
+    """Lightweight callback: prints timestep progress + elapsed time."""
+
+    def __init__(self, total_timesteps: int, print_freq: int = 10_000, algo_name: str = ""):
+        self.total = total_timesteps
+        self.freq = print_freq
+        self.algo = algo_name
+        self._last_print = 0
+        self._t0 = None
+        # SB3 callback protocol
+        self.n_calls = 0
+        self.num_timesteps = 0
+        self.locals: dict = {}
+        self.globals: dict = {}
+        self.model = None
+        self.training_env = None
+        self.parent = None
+        self.verbose = 0
+        self.logger = None
+
+    # SB3 calls these hooks
+    def init_callback(self, model) -> None:
+        self.model = model
+        self._t0 = time.time()
+
+    def on_training_start(self, locals_: dict, globals_: dict) -> None:
+        self._t0 = time.time()
+        print(f"  [{self.algo}] Training started — {self.total:,} steps")
+
+    def on_step(self) -> bool:
+        self.num_timesteps = self.model.num_timesteps
+        if self.num_timesteps - self._last_print >= self.freq:
+            elapsed = time.time() - self._t0
+            pct = 100 * self.num_timesteps / self.total
+            eta = (elapsed / self.num_timesteps) * (self.total - self.num_timesteps) if self.num_timesteps > 0 else 0
+            print(
+                f"  [{self.algo}] {self.num_timesteps:>8,}/{self.total:,} "
+                f"({pct:5.1f}%) | elapsed={elapsed/60:.1f}m | eta={eta/60:.1f}m"
+            )
+            self._last_print = self.num_timesteps
+        return True
+
+    def on_rollout_start(self) -> None: pass
+    def on_rollout_end(self) -> None: pass
+    def on_training_end(self) -> None:
+        elapsed = time.time() - self._t0
+        print(f"  [{self.algo}] DONE — {self.total:,} steps in {elapsed/60:.1f}m")
+    def _on_step(self) -> bool: return self.on_step()
+    def _on_rollout_start(self) -> None: pass
+    def _on_rollout_end(self) -> None: pass
+    def _on_training_start(self) -> None: pass
+    def _on_training_end(self) -> None: self.on_training_end()
+    def update_locals(self, locals_: dict) -> None: self.locals.update(locals_)
+    def update_globals(self, globals_: dict) -> None: self.globals.update(globals_)
 
 
 # ── Heuristic baselines ───────────────────────────────────────────────────
@@ -113,10 +172,11 @@ def train_maskable_ppo(
         gamma=kwargs.get("gamma", 0.99),
         gae_lambda=0.95,
         clip_range=0.2,
-        verbose=0,
+        verbose=1,
         seed=seed,
     )
 
+    progress_cb = ProgressCallback(total_timesteps, print_freq=10_000, algo_name="MASKABLE_PPO")
     eval_cb = EvalCallback(
         env,
         best_model_save_path=str(out / "best_maskable_ppo"),
@@ -124,8 +184,10 @@ def train_maskable_ppo(
         eval_freq=5000,
         n_eval_episodes=20,
         deterministic=True,
+        verbose=0,
     )
-    model.learn(total_timesteps=total_timesteps, callback=eval_cb)
+    from stable_baselines3.common.callbacks import CallbackList
+    model.learn(total_timesteps=total_timesteps, callback=CallbackList([progress_cb, eval_cb]))
     model.save(str(out / "maskable_ppo"))
     logger.info("MaskablePPO saved to %s", out / "maskable_ppo.zip")
     return model
@@ -155,10 +217,11 @@ def train_ppo(
         gamma=kwargs.get("gamma", 0.99),
         gae_lambda=0.95,
         clip_range=0.2,
-        verbose=0,
+        verbose=1,
         seed=seed,
     )
 
+    progress_cb = ProgressCallback(total_timesteps, print_freq=10_000, algo_name="PPO")
     eval_cb = EvalCallback(
         env,
         best_model_save_path=str(out / "best_ppo"),
@@ -166,8 +229,10 @@ def train_ppo(
         eval_freq=5000,
         n_eval_episodes=20,
         deterministic=True,
+        verbose=0,
     )
-    model.learn(total_timesteps=total_timesteps, callback=eval_cb)
+    from stable_baselines3.common.callbacks import CallbackList
+    model.learn(total_timesteps=total_timesteps, callback=CallbackList([progress_cb, eval_cb]))
     model.save(str(out / "ppo"))
     logger.info("PPO saved to %s", out / "ppo.zip")
     return model
@@ -196,10 +261,11 @@ def train_dqn(
         gamma=kwargs.get("gamma", 0.99),
         exploration_fraction=0.3,
         exploration_final_eps=0.05,
-        verbose=0,
+        verbose=1,
         seed=seed,
     )
 
+    progress_cb = ProgressCallback(total_timesteps, print_freq=10_000, algo_name="DQN")
     eval_cb = EvalCallback(
         env,
         best_model_save_path=str(out / "best_dqn"),
@@ -207,8 +273,10 @@ def train_dqn(
         eval_freq=5000,
         n_eval_episodes=20,
         deterministic=True,
+        verbose=0,
     )
-    model.learn(total_timesteps=total_timesteps, callback=eval_cb)
+    from stable_baselines3.common.callbacks import CallbackList
+    model.learn(total_timesteps=total_timesteps, callback=CallbackList([progress_cb, eval_cb]))
     model.save(str(out / "dqn"))
     logger.info("DQN saved to %s", out / "dqn.zip")
     return model
@@ -235,10 +303,11 @@ def train_a2c(
         n_steps=kwargs.get("n_steps", 5),
         gamma=kwargs.get("gamma", 0.99),
         gae_lambda=0.95,
-        verbose=0,
+        verbose=1,
         seed=seed,
     )
 
+    progress_cb = ProgressCallback(total_timesteps, print_freq=10_000, algo_name="A2C")
     eval_cb = EvalCallback(
         env,
         best_model_save_path=str(out / "best_a2c"),
@@ -246,18 +315,20 @@ def train_a2c(
         eval_freq=5000,
         n_eval_episodes=20,
         deterministic=True,
+        verbose=0,
     )
-    model.learn(total_timesteps=total_timesteps, callback=eval_cb)
+    from stable_baselines3.common.callbacks import CallbackList
+    model.learn(total_timesteps=total_timesteps, callback=CallbackList([progress_cb, eval_cb]))
     model.save(str(out / "a2c"))
     logger.info("A2C saved to %s", out / "a2c.zip")
     return model
 
 
 ALGO_REGISTRY = {
-    "maskable_ppo": train_maskable_ppo,
-    "ppo": train_ppo,
-    "dqn": train_dqn,
-    "a2c": train_a2c,
+    "a2c":          train_a2c,          # fastest — gives output first
+    "dqn":          train_dqn,
+    "ppo":          train_ppo,
+    "maskable_ppo": train_maskable_ppo,  # most complex — runs last
 }
 
 
