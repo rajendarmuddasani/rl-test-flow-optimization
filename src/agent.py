@@ -113,6 +113,14 @@ def cost_efficient_policy(env) -> int:
     return best_idx
 
 
+def _ensure_monitor(env):
+    """Wrap env with Monitor if not already wrapped (suppresses SB3 warning)."""
+    from stable_baselines3.common.monitor import Monitor
+    if not isinstance(env, Monitor):
+        env = Monitor(env)
+    return env
+
+
 BASELINES = {
     "random": random_policy,
     "greedy_coverage": greedy_coverage_policy,
@@ -159,12 +167,14 @@ def train_maskable_ppo(
     from sb3_contrib import MaskablePPO
     from stable_baselines3.common.callbacks import EvalCallback
 
+    env = _ensure_monitor(env)
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
     model = MaskablePPO(
         "MlpPolicy",
         env,
+        policy_kwargs=dict(net_arch=[256, 256]),  # production-grade network
         learning_rate=kwargs.get("learning_rate", 3e-4),
         n_steps=kwargs.get("n_steps", 2048),
         batch_size=kwargs.get("batch_size", 64),
@@ -204,12 +214,14 @@ def train_ppo(
     from stable_baselines3 import PPO
     from stable_baselines3.common.callbacks import EvalCallback
 
+    env = _ensure_monitor(env)
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
     model = PPO(
         "MlpPolicy",
         env,
+        policy_kwargs=dict(net_arch=[256, 256]),
         learning_rate=kwargs.get("learning_rate", 3e-4),
         n_steps=kwargs.get("n_steps", 2048),
         batch_size=kwargs.get("batch_size", 64),
@@ -249,12 +261,14 @@ def train_dqn(
     from stable_baselines3 import DQN
     from stable_baselines3.common.callbacks import EvalCallback
 
+    env = _ensure_monitor(env)
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
     model = DQN(
         "MlpPolicy",
         env,
+        policy_kwargs=dict(net_arch=[256, 256]),
         learning_rate=kwargs.get("learning_rate", 1e-3),
         buffer_size=kwargs.get("buffer_size", 100_000),
         batch_size=kwargs.get("batch_size", 64),
@@ -293,12 +307,14 @@ def train_a2c(
     from stable_baselines3 import A2C
     from stable_baselines3.common.callbacks import EvalCallback
 
+    env = _ensure_monitor(env)
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
     model = A2C(
         "MlpPolicy",
         env,
+        policy_kwargs=dict(net_arch=[256, 256]),
         learning_rate=kwargs.get("learning_rate", 7e-4),
         n_steps=kwargs.get("n_steps", 5),
         gamma=kwargs.get("gamma", 0.99),
@@ -406,4 +422,32 @@ def run_optuna_hpo(
         "best_params": study.best_params,
         "best_value": study.best_value,
         "n_trials": len(study.trials),
+        "trial_values": [t.value for t in study.trials if t.value is not None],
+    }
+
+
+def evaluate_trained_model_detailed(env, model, n_episodes: int = 1000) -> dict:
+    """Like evaluate_trained_model but returns per-episode arrays for plotting."""
+    episode_rewards, episode_costs, episode_tests, defect_escapes = [], [], [], []
+    for _ in range(n_episodes):
+        obs, _ = env.reset()
+        done, ep_reward = False, 0.0
+        while not done:
+            action, _ = model.predict(obs, deterministic=True)
+            obs, reward, terminated, truncated, info = env.step(action)
+            ep_reward += reward
+            done = terminated or truncated
+        episode_rewards.append(ep_reward)
+        episode_costs.append(info.get("cost_spent", info.get("cost", 0.0)))
+        episode_tests.append(info.get("tests_run", 0))
+        defect_escapes.append(1 if info.get("defect_escaped", False) else 0)
+    return {
+        "episode_rewards": episode_rewards,
+        "episode_costs": episode_costs,
+        "episode_tests": episode_tests,
+        "defect_escapes": defect_escapes,
+        "mean_reward": float(np.mean(episode_rewards)),
+        "std_reward": float(np.std(episode_rewards)),
+        "accuracy": float(1.0 - np.mean(defect_escapes)),
+        "defect_escape_rate": float(np.mean(defect_escapes)),
     }

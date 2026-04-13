@@ -119,6 +119,17 @@ class TestFlowEnv(gym.Env):
         # Pre-compute group for each test
         self._test_groups = [self.tests[n].get("group", "functional") for n in self.test_names]
 
+        # ── Pre-computed numpy arrays for vectorised hot paths ─────────────
+        # These are read-only across all steps — built once in __init__.
+        costs = np.array([self.tests[n]["cost"] for n in self.test_names], dtype=np.float32)
+        times = np.array([self.tests[n]["time"] for n in self.test_names], dtype=np.float32)
+        covs  = np.array([self.tests[n]["defect_coverage"] for n in self.test_names], dtype=np.float32)
+        self._raw_costs   = costs                          # for budget check
+        self._norm_costs  = costs / self._max_cost         # for obs
+        self._norm_times  = times / self._max_time         # for obs
+        self._coverages   = covs                           # for obs
+        self._stop_true   = np.array([True], dtype=bool)   # STOP always valid
+
     # ── Reset / Step ───────────────────────────────────────────────────────
 
     def reset(self, seed=None, options=None):
@@ -175,18 +186,10 @@ class TestFlowEnv(gym.Env):
     # ── Action Masking (for MaskablePPO) ───────────────────────────────────
 
     def action_masks(self) -> np.ndarray:
-        """Return boolean mask of valid actions."""
-        mask = np.ones(self.n_tests + 1, dtype=bool)
-        # Mask already-run tests
-        mask[:self.n_tests] = self._run_mask == 0.0
-        # Mask tests that exceed remaining budget
-        remaining = self.cost_budget - self._cost_spent
-        for i in range(self.n_tests):
-            if mask[i] and self.tests[self.test_names[i]]["cost"] > remaining:
-                mask[i] = False
-        # STOP is always valid
-        mask[self.n_tests] = True
-        return mask
+        """Return boolean mask of valid actions — fully vectorised (no Python loop)."""
+        not_run   = self._run_mask == 0.0                            # shape (n_tests,)
+        affordable = self._raw_costs <= (self.cost_budget - self._cost_spent)
+        return np.concatenate([not_run & affordable, self._stop_true])
 
     # ── Internal ───────────────────────────────────────────────────────────
 
@@ -225,15 +228,13 @@ class TestFlowEnv(gym.Env):
         return self._obs(), reward, True, False, info
 
     def _obs(self) -> np.ndarray:
-        per_test = np.zeros(self.n_tests * 5, dtype=np.float32)
-        for i in range(self.n_tests):
-            t = self.tests[self.test_names[i]]
-            base = i * 5
-            per_test[base] = self._run_mask[i]
-            per_test[base + 1] = self._results[i]
-            per_test[base + 2] = t["cost"] / self._max_cost
-            per_test[base + 3] = t["time"] / self._max_time
-            per_test[base + 4] = t["defect_coverage"]
+        # Vectorised — no Python loop, uses pre-built numpy arrays.
+        per_test = np.empty(self.n_tests * 5, dtype=np.float32)
+        per_test[0::5] = self._run_mask       # already_run
+        per_test[1::5] = self._results        # test result
+        per_test[2::5] = self._norm_costs     # normalised cost
+        per_test[3::5] = self._norm_times     # normalised time
+        per_test[4::5] = self._coverages      # defect coverage
 
         global_feats = np.array([
             1.0 - self._cost_spent / self.cost_budget,
