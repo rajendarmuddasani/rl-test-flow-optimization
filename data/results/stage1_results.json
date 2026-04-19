@@ -1,0 +1,61 @@
+{
+  "baselines": {
+    "random": {
+      "mean_reward": 3.35,
+      "accuracy": 0.868,
+      "mean_cost": 48.52,
+      "mean_tests": 6.0
+    },
+    "greedy_coverage": {
+      "mean_reward": 3.84,
+      "accuracy": 0.88,
+      "mean_cost": 49.85,
+      "mean_tests": 7.0
+    },
+    "cost_efficient": {
+      "mean_reward": 5.49,
+      "accuracy": 0.878,
+      "mean_cost": 21.63,
+      "mean_tests": 11.0
+    }
+  },
+  "stage1": {
+    "a2c": {
+      "mean_reward": -413.409126,
+      "std_reward": 13.691147,
+      "mean_cost": 17.67,
+      "accuracy": 0.56,
+      "mean_tests": 1.0,
+      "train_time_sec": 546.2
+    },
+    "dqn": {
+      "mean_reward": -28.419542,
+      "std_reward": 108.586054,
+      "mean_cost": 43.6642,
+      "accuracy": 0.89,
+      "mean_tests": 7.48,
+      "train_time_sec": 445.3
+    },
+    "ppo": {
+      "mean_reward": -404.106978,
+      "std_reward": 10.748953,
+      "mean_cost": 13.61,
+      "accuracy": 0.81,
+      "mean_tests": 2.0,
+      "train_time_sec": 424.9
+    },
+    "maskable_ppo": {
+      "mean_reward": -411.843844,
+      "std_reward": 13.305638,
+      "mean_cost": 4.72,
+      "accuracy": 0.6,
+      "mean_tests": 1.0,
+      "train_time_sec": 531.7
+    }
+  },
+  "top2_algos": [
+    "dqn",
+    "ppo"
+  ],
+  "best_base_reward": 5.49
+}

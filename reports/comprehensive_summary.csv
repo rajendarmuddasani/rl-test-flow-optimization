@@ -1,0 +1,11 @@
+Method,Stage,Mean Reward,Std Reward,Accuracy,Steps
+random,Baseline,3.35,0.0,0.868,0
+greedy_coverage,Baseline,3.84,0.0,0.88,0
+cost_efficient,Baseline,5.49,0.0,0.878,0
+a2c,Stage-1,-413.41,13.691,0.56,200000
+dqn,Stage-1,-28.42,108.586,0.89,200000
+ppo,Stage-1,-404.11,10.749,0.81,200000
+maskable_ppo,Stage-1,-411.84,13.306,0.6,200000
+dqn(3-seed),Stage-2,4.78,1.079,0.917,500000
+ppo(3-seed),Stage-2,-3.86,1.298,0.59,500000
+dqn(HPO),Final,-6.3,13.55,0.5,1000000

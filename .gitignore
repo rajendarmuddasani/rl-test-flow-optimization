@@ -46,6 +46,31 @@ Thumbs.db
 *.zip
 outputs/
 mlruns/
+models/
+.venv/
+
+# Kaggle execution artifacts (large, noisy, not canonical)
+notebooks/rl_test_flow_final_models/
+notebooks/rl_test_flow_final_models.zip
+notebooks/notebook_b2_executed.ipynb
+notebooks/notebook_nb3_executed.ipynb
+notebooks/train-rl-kaggle-nb1-executed.ipynb
+notebooks/train-rl-kaggle-nb1_new.ipynb
+notebooks/train-rl-kaggle-nb1_part1.ipynb
+notebooks/notebook1f5d3b4409.ipynb
+notebooks/fork-of-train-rl-kaggle.ipynb
+notebooks/train_rl_kaggle.ipynb
+notebooks/train-rl-kaggle-nb1\ \(1\).ipynb
+data/rl_test_flow_final_models/
+data/kaggle_results/
+
+# Generated diagram exports (large binary, regenerate locally)
+MERMAID_flow.gif
+MERMAID_flow.png
+
+# Secrets and environment
+.env
+*.env
 
 # Internal planning files
 ENHANCEMENT_PLAN.md
