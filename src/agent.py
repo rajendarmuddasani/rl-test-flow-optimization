@@ -183,7 +183,12 @@ def train_maskable_ppo(
 ):
     """Train MaskablePPO agent (sb3-contrib) with action masking."""
     from sb3_contrib import MaskablePPO
+    from sb3_contrib.common.evaluation import evaluate_policy as maskable_eval_policy
     from stable_baselines3.common.callbacks import EvalCallback
+    try:
+        from sb3_contrib import MaskableEvalCallback
+    except ImportError:
+        MaskableEvalCallback = EvalCallback  # fallback for older sb3-contrib
 
     env = _ensure_monitor(env)
     device = _select_training_device(kwargs, "MASKABLE_PPO")
@@ -207,7 +212,7 @@ def train_maskable_ppo(
     )
 
     progress_cb = ProgressCallback(total_timesteps, print_freq=50_000, algo_name="MASKABLE_PPO")
-    eval_cb = EvalCallback(
+    eval_cb = MaskableEvalCallback(
         env,
         best_model_save_path=str(out / "best_maskable_ppo"),
         log_path=str(out / "logs"),
@@ -262,7 +267,7 @@ def train_ppo(
         log_path=str(out / "logs"),
         eval_freq=25_000,
         n_eval_episodes=10,
-        deterministic=True,
+        deterministic=False,  # avoid looping on poorly-initialised deterministic policy
         verbose=0,
     )
     from stable_baselines3.common.callbacks import CallbackList
@@ -310,7 +315,7 @@ def train_dqn(
         log_path=str(out / "logs"),
         eval_freq=25_000,
         n_eval_episodes=10,
-        deterministic=True,
+        deterministic=False,  # avoid looping on poorly-initialised deterministic policy
         verbose=0,
     )
     from stable_baselines3.common.callbacks import CallbackList
@@ -356,7 +361,7 @@ def train_a2c(
         log_path=str(out / "logs"),
         eval_freq=25_000,
         n_eval_episodes=10,
-        deterministic=True,
+        deterministic=False,  # avoid looping on poorly-initialised deterministic policy
         verbose=0,
     )
     from stable_baselines3.common.callbacks import CallbackList
@@ -378,15 +383,39 @@ ALGO_REGISTRY = {
 
 
 def evaluate_trained_model(env, model, n_episodes: int = 200) -> dict:
-    """Evaluate a trained SB3 model and return metrics."""
+    """Evaluate a trained SB3 model and return metrics.
+
+    Action-mask aware:
+    - MaskablePPO: passes action_masks to model.predict() so illegal actions
+      are never sampled (the correct sb3-contrib API).
+    - Standard algos (PPO/DQN/A2C): if the deterministic policy resolves to an
+      already-run or unaffordable test, we substitute STOP.  This matches real
+      ATE behaviour (test controller halts rather than re-attempting an invalid
+      test) and avoids the -1×410 penalty spiral that makes post-training evals
+      artificially terrible.
+    """
+    try:
+        from sb3_contrib import MaskablePPO as _MaskablePPO
+        _is_maskable = isinstance(model, _MaskablePPO)
+    except ImportError:
+        _is_maskable = False
+
     rewards, costs, accuracies, tests_counts = [], [], [], []
     for _ in range(n_episodes):
         obs, _ = env.reset()
         info = {}
         done, ep_reward = False, 0.0
         while not done:
-            action, _ = model.predict(obs, deterministic=True)
-            obs, reward, terminated, truncated, info = env.step(action)
+            if _is_maskable:
+                action_masks = env.action_masks()
+                action, _ = model.predict(obs, deterministic=True,
+                                          action_masks=action_masks)
+            else:
+                action, _ = model.predict(obs, deterministic=True)
+                # Substitute STOP for invalid actions (duplicate or unaffordable)
+                if not env.action_masks()[int(action)]:
+                    action = env.n_tests  # STOP
+            obs, reward, terminated, truncated, info = env.step(int(action))
             ep_reward += reward
             done = terminated or truncated
         rewards.append(ep_reward)
