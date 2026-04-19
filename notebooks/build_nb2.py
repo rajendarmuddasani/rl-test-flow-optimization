@@ -87,7 +87,7 @@ cells.append(cc(
     "            seed=seed,\n"
     "        )\n"
     "        elapsed = _time.time() - t0\n"
-    "        metrics = evaluate_trained_model(env, model, n_episodes=500)\n"
+    "        metrics = evaluate_trained_model(env, model, n_episodes=100)\n"
     "        metrics['seed'] = seed\n"
     "        metrics['train_time_sec'] = round(elapsed, 1)\n"
     "        seed_metrics.append(metrics)\n"

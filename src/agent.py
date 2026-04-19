@@ -201,18 +201,18 @@ def train_maskable_ppo(
         gamma=kwargs.get("gamma", 0.99),
         gae_lambda=0.95,
         clip_range=0.2,
-        verbose=1,
+        verbose=0,
         seed=seed,
         device=device,
     )
 
-    progress_cb = ProgressCallback(total_timesteps, print_freq=10_000, algo_name="MASKABLE_PPO")
+    progress_cb = ProgressCallback(total_timesteps, print_freq=50_000, algo_name="MASKABLE_PPO")
     eval_cb = EvalCallback(
         env,
         best_model_save_path=str(out / "best_maskable_ppo"),
         log_path=str(out / "logs"),
-        eval_freq=5000,
-        n_eval_episodes=20,
+        eval_freq=25_000,
+        n_eval_episodes=10,
         deterministic=True,
         verbose=0,
     )
@@ -250,18 +250,18 @@ def train_ppo(
         gamma=kwargs.get("gamma", 0.99),
         gae_lambda=0.95,
         clip_range=0.2,
-        verbose=1,
+        verbose=0,
         seed=seed,
         device=device,
     )
 
-    progress_cb = ProgressCallback(total_timesteps, print_freq=10_000, algo_name="PPO")
+    progress_cb = ProgressCallback(total_timesteps, print_freq=50_000, algo_name="PPO")
     eval_cb = EvalCallback(
         env,
         best_model_save_path=str(out / "best_ppo"),
         log_path=str(out / "logs"),
-        eval_freq=5000,
-        n_eval_episodes=20,
+        eval_freq=25_000,
+        n_eval_episodes=10,
         deterministic=True,
         verbose=0,
     )
@@ -293,23 +293,23 @@ def train_dqn(
         env,
         policy_kwargs=dict(net_arch=[256, 256]),
         learning_rate=kwargs.get("learning_rate", 1e-3),
-        buffer_size=kwargs.get("buffer_size", 100_000),
+        buffer_size=kwargs.get("buffer_size", 50_000),
         batch_size=kwargs.get("batch_size", 64),
         gamma=kwargs.get("gamma", 0.99),
         exploration_fraction=0.3,
         exploration_final_eps=0.05,
-        verbose=1,
+        verbose=0,
         seed=seed,
         device=device,
     )
 
-    progress_cb = ProgressCallback(total_timesteps, print_freq=10_000, algo_name="DQN")
+    progress_cb = ProgressCallback(total_timesteps, print_freq=50_000, algo_name="DQN")
     eval_cb = EvalCallback(
         env,
         best_model_save_path=str(out / "best_dqn"),
         log_path=str(out / "logs"),
-        eval_freq=5000,
-        n_eval_episodes=20,
+        eval_freq=25_000,
+        n_eval_episodes=10,
         deterministic=True,
         verbose=0,
     )
@@ -344,18 +344,18 @@ def train_a2c(
         n_steps=kwargs.get("n_steps", 5),
         gamma=kwargs.get("gamma", 0.99),
         gae_lambda=0.95,
-        verbose=1,
+        verbose=0,
         seed=seed,
         device=device,
     )
 
-    progress_cb = ProgressCallback(total_timesteps, print_freq=10_000, algo_name="A2C")
+    progress_cb = ProgressCallback(total_timesteps, print_freq=50_000, algo_name="A2C")
     eval_cb = EvalCallback(
         env,
         best_model_save_path=str(out / "best_a2c"),
         log_path=str(out / "logs"),
-        eval_freq=5000,
-        n_eval_episodes=20,
+        eval_freq=25_000,
+        n_eval_episodes=10,
         deterministic=True,
         verbose=0,
     )

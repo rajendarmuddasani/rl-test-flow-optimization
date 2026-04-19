@@ -95,8 +95,10 @@ class TestFlowEnv(gym.Env):
         time_budget: float = 60.0,
         defect_rate: float = 0.70,
         seed: int = 42,
+        max_steps_per_episode: int | None = None,
     ):
         super().__init__()
+        self._max_steps = max_steps_per_episode if max_steps_per_episode is not None else n_tests * 2 + 10
         if test_config is not None:
             self.tests = test_config
         else:
@@ -139,6 +141,7 @@ class TestFlowEnv(gym.Env):
         self._cost_spent = 0.0
         self._time_spent = 0.0
         self._done = False
+        self._step_count = 0
 
         # Sample chip
         if self.np_random.random() < self.defect_rate:
@@ -151,6 +154,14 @@ class TestFlowEnv(gym.Env):
     def step(self, action: int):
         if self._done:
             return self._obs(), 0.0, True, False, {}
+
+        self._step_count += 1
+
+        # Guard: force-terminate if episode exceeds max_steps (prevents infinite
+        # loops when a deterministic policy repeatedly selects duplicate actions,
+        # since duplicates don't change state → same obs → same prediction).
+        if self._step_count >= self._max_steps:
+            return self._evaluate()
 
         # STOP
         if action == self.n_tests:
